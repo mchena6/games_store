@@ -21,37 +21,77 @@ from .serializers import (
 #PUblico
 
 class CategoryViewSet(viewsets.ModelViewSet):
-    queryset = Category.objects.all()
+    queryset = Category.objects.all().order_by("id")
     serializer_class = CategorySerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ["name"]
+    ordering_fields = ["name", "id"]
 
 class BrandViewSet(viewsets.ModelViewSet):
     queryset = Brand.objects.all()
     serializer_class = BrandSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ["name"]
+    ordering_fields = ["name", "id"]
 
 class ProductViewSet(viewsets.ModelViewSet):
-    queryset = Product.objects.all()
-    serializer_class = ProductSerializer
+    queryset = Product.objects.all().select_related("category", "brand").order_by("id")
     permission_classes = [IsAuthenticatedOrReadOnly]
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+
+    filterset_fields = {
+        "category": ["exact"],
+        "brand": ["exact"],
+        "price": ["exact", "gt", "lt", "gte", "lte"],
+        "featured": ["exact"],
+    }
+    search_fields = ["name", "description", "category__name", "brand__name"]
+    ordering_fields = ["name", "price", "id"]
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return ProductPublicSerializer
+        else:
+            return ProductSerializer
 
 class SpecificationViewSet(viewsets.ModelViewSet):
-    queryset = Specification.objects.all()
+    queryset = Specification.objects.all().order_by("id")
     serializer_class = SpecificationSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
 class ProductSpecificationViewSet(viewsets.ModelViewSet):
-    queryset = ProductSpecification.objects.all()
-    serializer_class = ProductSpecificationSerializer
+    queryset = ProductSpecification.objects.all().select_related("product", "specification").order_by("id")
     permission_classes = [IsAuthenticatedOrReadOnly]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = {
+        "product": ["exact"],
+        "specification": ["exact"]
+    }
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return ProductSpecificationPublicSerializer
+        else:
+            return ProductSpecificationSerializer
 
 
 # requieren Auth
 
 class CartViewSet(viewsets.ModelViewSet):
-    queryset = Cart.objects.all()
-    serializer_class = CartSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = {"cart_code": ["exact"]}
+
+    def get_queryset(self):
+        return Cart.objects.filter(user=self.request.user).select_related("user").order_by("-created_at")
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return CartPublicSerializer
+        else:
+            return CartSerializer
 
     # Se encarga de asignar el usuario al carrito al crearlo
     def perform_create(self, serializer):
@@ -64,35 +104,83 @@ class CartViewSet(viewsets.ModelViewSet):
         return Response({"status": "Proveedor borrado con exito"})
 
 class CartItemViewSet(viewsets.ModelViewSet):
-    queryset = CartItem.objects.all()
-    serializer_class = CartItemSerializer
+    queryset = CartItem.objects.all().select_related("cart", "product").order_by("id")
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = {"cart": ["exact"]}
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return CartItemPublicSerializer
+        else:
+            return CartItemSerializer
 
 class ReviewViewSet(viewsets.ModelViewSet):
-    queryset = Review.objects.all()
-    serializer_class = ReviewSerializer
+    queryset = Review.objects.all().select_related("product", "user").order_by("id")
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = {
+        "product": ["exact"],
+        "rating": ["exact", "gte"]
+    }
+    ordering_fields = ["rating", "created"]
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return ReviewPublicSerializer
+        else:
+            return ReviewSerializer
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
 class ProductRatingViewSet(viewsets.ModelViewSet):
-    queryset = ProductRating.objects.all()
-    serializer_class = ProductRatingSerializer
+    queryset = ProductRating.objects.all().select_related("product").order_by("id")
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = {
+        "product": ["exact"],
+        "average_rating": ["exact", "gte"]
+    }
+    ordering_fields = ["average_rating"]
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return ProductRatingPublicSerializer
+        else:
+            return ProductRatingSerializer
 
 class WishlistViewSet(viewsets.ModelViewSet):
-    queryset = Wishlist.objects.all()
-    serializer_class = WishlistSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = {"product": ["exact"]}
+
+    def get_queryset(self):
+        return Wishlist.objects.filter(user=self.request.user).select_related("product", "user").order_by("-created")
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return WishlistPublicSerializer
+        else:
+            return WishlistSerializer
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
 class OrderViewSet(viewsets.ModelViewSet):
-    queryset = Order.objects.all()
-    serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
+    filterset_fields = {"status": ["exact"]}
+    ordering_fields = ["created_at", "total_amount"]
+
+    def get_queryset(self):
+        return Order.objects.filter(user=self.request.user).select_related("user").order_by("-created_at")
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return OrderPublicSerializer
+        else:
+            return OrderSerializer
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -108,6 +196,13 @@ class OrderViewSet(viewsets.ModelViewSet):
         return Response({"error": "solo se pueden cancelar ordenes en estado pending"})
 
 class OrderItemViewSet(viewsets.ModelViewSet):
-    queryset = OrderItem.objects.all()
-    serializer_class = OrderItemSerializer
+    queryset = OrderItem.objects.all().select_related("order", "product",).order_by("id")
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = {"order": ["exact"]}
+
+    def get_serializer_class(self):
+        if self.action == "list":
+            return OrderItemPublicSerializer
+        else:
+            return OrderItemSerializer
