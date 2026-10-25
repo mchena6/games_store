@@ -6,6 +6,8 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
+from django.views.generic import TemplateView
+
 from .models import (
     Category, Brand, Product, Specification, ProductSpecification, Cart, CartItem, Review, ProductRating, Wishlist, Order, OrderItem
 )
@@ -206,3 +208,6 @@ class OrderItemViewSet(viewsets.ModelViewSet):
             return OrderItemPublicSerializer
         else:
             return OrderItemSerializer
+
+class WelcomeView(TemplateView):
+    template_name = "welcome.html"
