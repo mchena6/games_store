@@ -57,6 +57,12 @@ class CartViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    @action(detail=True, methods=['post'])
+    def vaciar(self, request, pk=None):
+        cart = self.get_object()
+        cart.cartitems.all().delete()
+        return Response({"status": "Proveedor borrado con exito"})
+
 class CartItemViewSet(viewsets.ModelViewSet):
     queryset = CartItem.objects.all()
     serializer_class = CartItemSerializer
@@ -90,6 +96,16 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+    @action(detail=True, methods=['post'])
+    def cancelar(self, request, pk=None):
+        order = self.get_object()
+
+        if order.status == 'Pending':
+            order.status = 'Canceled'
+            order.save()
+            return Response({"status": "La orden ha sido cancelada"})
+        return Response({"error": "solo se pueden cancelar ordenes en estado pending"})
 
 class OrderItemViewSet(viewsets.ModelViewSet):
     queryset = OrderItem.objects.all()
