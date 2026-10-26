@@ -12,3 +12,6 @@ wheels/
 
 # dbsqlite
 /db.sqlite3
+
+# media files
+/media
