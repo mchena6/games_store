@@ -1,6 +1,6 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiResponse, extend_schema
-from rest_framework import viewsets
+from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
@@ -103,13 +103,17 @@ class CartViewSet(viewsets.ModelViewSet):
     def vaciar(self, request, pk=None):
         cart = self.get_object()
         cart.cartitems.all().delete()
-        return Response({"status": "Proveedor borrado con exito"})
+        return Response({"status": "El carrito ha sido vaciado con éxito"})
 
 class CartItemViewSet(viewsets.ModelViewSet):
-    queryset = CartItem.objects.all().select_related("cart", "product").order_by("id")
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = {"cart": ["exact"]}
+
+    def get_queryset(self):
+        return CartItem.objects.filter(
+            cart__user=self.request.user
+            ).select_related("cart__user", "product__category", "product__brand").order_by("id")
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -118,8 +122,8 @@ class CartItemViewSet(viewsets.ModelViewSet):
             return CartItemSerializer
 
 class ReviewViewSet(viewsets.ModelViewSet):
-    queryset = Review.objects.all().select_related("product", "user").order_by("id")
-    permission_classes = [IsAuthenticated]
+    queryset = Review.objects.all().select_related("product__category","product__brand", "user").order_by("id")
+    permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = {
         "product": ["exact"],
@@ -136,9 +140,9 @@ class ReviewViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-class ProductRatingViewSet(viewsets.ModelViewSet):
-    queryset = ProductRating.objects.all().select_related("product").order_by("id")
-    permission_classes = [IsAuthenticated]
+class ProductRatingViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = ProductRating.objects.all().select_related("product__category", "product__brand").order_by("id")
+    permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = {
         "product": ["exact"],
@@ -158,7 +162,7 @@ class WishlistViewSet(viewsets.ModelViewSet):
     filterset_fields = {"product": ["exact"]}
 
     def get_queryset(self):
-        return Wishlist.objects.filter(user=self.request.user).select_related("product", "user").order_by("-created")
+        return Wishlist.objects.filter(user=self.request.user).select_related("product__category", "product__brand", "user").order_by("-created")
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -195,13 +199,19 @@ class OrderViewSet(viewsets.ModelViewSet):
             order.status = 'Canceled'
             order.save()
             return Response({"status": "La orden ha sido cancelada"})
-        return Response({"error": "solo se pueden cancelar ordenes en estado pending"})
-
+        return Response(
+            {"error": "Solo se pueden cancelar órdenes en estado Pending."},
+            status=status.HTTP_400_BAD_REQUEST
+            )
 class OrderItemViewSet(viewsets.ModelViewSet):
-    queryset = OrderItem.objects.all().select_related("order", "product",).order_by("id")
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = {"order": ["exact"]}
+
+    def get_queryset(self):
+        return CartItem.objects.filter(
+            order__user=self.request.user
+            ).select_related("order__user", "product__category", "product__brand").order_by("id")
 
     def get_serializer_class(self):
         if self.action == "list":
