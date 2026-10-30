@@ -4,6 +4,7 @@ from django.db.models import Prefetch
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import viewsets, status
+from rest_framework import permissions
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
@@ -83,17 +84,6 @@ class ProductSpecificationViewSet(viewsets.ModelViewSet):
 
 
 # requieren Auth
-# store/views.py
-import uuid
-from django.shortcuts import get_object_or_404
-from django.db.models import Prefetch
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-
-from .models import Cart, CartItem, Product
-from .serializers import CartPublicSerializer, CartItemSerializer
 
 class CartViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -180,17 +170,13 @@ class CartViewSet(viewsets.ModelViewSet):
         serializer = CartPublicSerializer(cart, context=self.get_serializer_context())
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-# store/views.py
 
-from django.db.models import Prefetch
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-
-from .models import Cart, CartItem
-from .serializers import CartItemSerializer, CartPublicSerializer
-
+# Permite ver a cualquiera, pero solo el autor puede modificarlo
+class IsAuthorOrReadOnly(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return obj.user == request.user
 
 class CartItemViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
@@ -260,7 +246,7 @@ class CartItemViewSet(viewsets.ModelViewSet):
 
 class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all().select_related("product__category","product__brand", "user").order_by("id")
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = {
         "product": ["exact"],
