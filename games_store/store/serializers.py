@@ -140,6 +140,19 @@ class ReviewSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created', 'updated']
 
+    # Validar una review por usuario
+    def validate(self, attrs):
+        request = self.context.get("request")
+        user = request.user if request else None
+        product = attrs.get("product")
+        # Al crear comprobar si ya existe review
+        if self.instance is None and user and product:
+            if Review.objects.filter(product=product, user=user).exists():
+                raise serializers.ValidationError(
+                    {"product": "Ya has publicado una reseña para este producto. No se permite más de una."}
+                )
+        return attrs
+
 class ReviewPublicSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField(read_only=True)
     product = ProductPublicSerializer(read_only=True)
@@ -168,7 +181,7 @@ class ProductRatingPublicSerializer(serializers.ModelSerializer):
             'average_rating', 
             'total_reviews'
         ]
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'average_rating', 'total_reviews']
 
 class ProductRatingSerializer(serializers.ModelSerializer):
     class Meta:
@@ -179,7 +192,7 @@ class ProductRatingSerializer(serializers.ModelSerializer):
             'average_rating', 
             'total_reviews'
         ]
-        read_only_fields = ['id']
+        read_only_fields = ['id', 'average_rating', 'total_reviews']
 
 class WishlistPublicSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField(read_only=True)
