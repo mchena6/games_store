@@ -13,9 +13,9 @@ from .models import (
 )
 from .serializers import (
     CategorySerializer, BrandSerializer, SpecificationSerializer, ProductSerializer, ProductPublicSerializer,
-    ProductSpecificationSerializer, ProductSpecificationPublicSerializer, CartSerializer, CartPublicSerializer,
-    CartItemSerializer, CartItemPublicSerializer, ReviewSerializer, ReviewPublicSerializer, ProductRatingSerializer, ProductRatingPublicSerializer,
-    WishlistSerializer, WishlistPublicSerializer, OrderSerializer, OrderPublicSerializer, OrderItemSerializer, OrderItemPublicSerializer
+    ProductSpecificationSerializer, ProductSpecificationPublicSerializer, CartSerializer,
+    CartItemSerializer, ReviewSerializer, ReviewPublicSerializer, ProductRatingSerializer, ProductRatingPublicSerializer,
+    WishlistSerializer, WishlistPublicSerializer, OrderPublicSerializer, OrderItemSerializer,
 )
 
 # Create your views here.
