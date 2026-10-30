@@ -96,6 +96,11 @@ class CartItem(models.Model):
     product = models.ForeignKey(Product,on_delete=models.CASCADE, related_name="item" )
     quantity = models.IntegerField(default=1)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["cart", "product"], name="unique_product_per_cart")
+        ]
+
     def __str__(self):
         return f"{self.quantity} x {self.product.name} in {self.cart.cart_code}"
 

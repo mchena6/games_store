@@ -83,61 +83,62 @@ class ProductSpecificationSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id']
 
-# Maneja subtotal de cada producto (cantidad * precio)
+
+
 class CartItemSerializer(serializers.ModelSerializer):
     product = ProductPublicSerializer(read_only=True)
+    product_id = serializers.PrimaryKeyRelatedField(
+        queryset=Product.objects.all(), source="product", write_only=True
+    )
     sub_total = serializers.SerializerMethodField()
-
     class Meta:
         model = CartItem
-        fields = [
-                'id',
-                'product',
-                'quantity',
-                'sub_total'
-                ]
-
-        def get_sub_total(self, cartitem):
-            total = cartitem.product.price * cartitem.quantity
-            return total
-
-# Maneja el precio total del carrito (suma de todos los subtotales)
-class CartSerializer(serializers.ModelSerializer):
-    cartitems = CartItemSerializer(read_only=True, many=True)
+        fields = ["id", "product", "product_id", "quantity", "sub_total"]
+        extra_kwargs = {"quantity": {"min_value": 1}}
+    # Manejar subtotal del producto
+    def get_sub_total(self, item):
+        return item.product.price * item.quantity
+    
+class CartPublicSerializer(serializers.ModelSerializer):
+    cartitems = CartItemSerializer(many=True, read_only=True)
+    total_quantity = serializers.SerializerMethodField()
     cart_total = serializers.SerializerMethodField()
-    user = serializers.StringRelatedField(read_only=True)    
-
-    def get_cart_total(self, cart):
-        items = cart.caritems.all()
-        total = 0
-        for item in items:
-            item_total_price = item.quantity * item.product.price
-            total +=  item_total_price
-        return total
+    user = serializers.StringRelatedField(read_only=True)
     class Meta:
         model = Cart
+        fields = [
+            "id",
+            "cart_code",
+            "user",
+            "cartitems",
+            "total_quantity",
+            "cart_total",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "cart_code", "created_at", "updated_at"]
+    # Total de productos
+    def get_total_quantity(self, cart):
+        return sum(item.quantity for item in cart.cartitems.all())
+    # Precio total del carrito
+    def get_cart_total(self, cart):
+        return sum(item.quantity * item.product.price for item in cart.cartitems.all())
+    
+class ReviewSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField(read_only=True)
+
+    class Meta:
+        model = Review
         fields = [
             'id', 
-            'cart_code', 
             'user', 
-            'created_at', 
-            'updated_at'
+            'product', 
+            'rating', 
+            'review', 
+            'created', 
+            'updated'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
-
-# Maneja la cantidad de productos 
-class CartStatSerializer(serializers.ModelSerializer):
-    total_quantity = serializers.SerializerMethodField()
-    class Meta:
-        model = Cart
-        fields = ['id','cart_code','cartitems', 'total_quantity']
-
-    def get_total_quantity(self, cart):
-        items = cart.cartitems.all()
-        total = 0
-        for item in items:
-            total += item.quantity
-        return total
+        read_only_fields = ['id', 'created', 'updated']
 
 class ReviewPublicSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField(read_only=True)
@@ -152,22 +153,6 @@ class ReviewPublicSerializer(serializers.ModelSerializer):
             'rating',
             'review',
             'created',
-            'updated'
-        ]
-        read_only_fields = ['id', 'created', 'updated']
-
-class ReviewSerializer(serializers.ModelSerializer):
-    user = serializers.StringRelatedField(read_only=True)
-
-    class Meta:
-        model = Review
-        fields = [
-            'id', 
-            'user', 
-            'product', 
-            'rating', 
-            'review', 
-            'created', 
             'updated'
         ]
         read_only_fields = ['id', 'created', 'updated']
@@ -224,7 +209,7 @@ class WishlistSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created']
 
 
-class OrderItemSerializer(serializers.ModelSerializer):
+class OrderPublicItemSerializer(serializers.ModelSerializer):
     product = ProductPublicSerializer(read_only=True)
 
     class Meta:
@@ -240,7 +225,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 class OrderPublicSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField(read_only=True)
-    items = OrderItemSerializer(many=True, read_only=True)
+    items = OrderPublicItemSerializer(many=True, read_only=True)
 
     class Meta:
         model = Order
@@ -258,14 +243,32 @@ class OrderPublicSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
-# class OrderItemSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = OrderItem
-#         fields = [
-#             'id', 
-#             'order', 
-#             'product', 
-#             'quantity', 
-#             'price'
-#         ]
-#         read_only_fields = ['id']
+class OrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = [
+            'id',
+            'user', 
+            'status', 
+            'total_amount', 
+            'order_code', 
+            'payment_id', 
+            'shipping_address', 
+            'created_at', 
+            'updated_at',
+            'items'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrderItem
+        fields = [
+            'id', 
+            'order', 
+            'product', 
+            'quantity', 
+            'price'
+        ]
+        read_only_fields = ['id']
