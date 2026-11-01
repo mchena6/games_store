@@ -5,7 +5,7 @@ from django.conf.urls.static import static
 
 from .routers import router
 
-from store.views import WelcomeView
+from store.views import CreatePreferenceView, MercadoPagoWebhookView, WelcomeView
 
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -26,6 +26,9 @@ urlpatterns = [
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/swagger/", SpectacularSwaggerView.as_view(), name="swagger_ui"),
     path("api/docs/redoc/", SpectacularRedocView.as_view(), name="redoc"),
+
+    path("api/checkout/preference/", CreatePreferenceView.as_view(), name="checkout_preference"),
+    path("api/checkout/webhook/", MercadoPagoWebhookView.as_view(), name="checkout_webhook"),
 ]
 
 if settings.DEBUG:

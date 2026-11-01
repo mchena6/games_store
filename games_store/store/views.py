@@ -1,16 +1,21 @@
 import uuid
 
+from django.db import transaction
 from django.db.models import Prefetch
 from django_filters.rest_framework import DjangoFilterBackend
+from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiResponse, extend_schema
-from rest_framework import viewsets, status
-from rest_framework import permissions
+from rest_framework import viewsets, status, permissions
+from rest_framework.views import APIView
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
 from django.views.generic import TemplateView
+
+from store.services.mercadopago_service import MercadoPagoService
+from users.models import CustomUser
 
 from .models import (
     Category, Brand, Product, Specification, ProductSpecification, Cart, CartItem, Review, ProductRating, Wishlist, Order, OrderItem
@@ -303,7 +308,15 @@ class OrderViewSet(viewsets.ModelViewSet):
     ordering_fields = ["created_at", "total_amount"]
 
     def get_queryset(self):
-        return Order.objects.filter(user=self.request.user).select_related("user").order_by("-created_at")
+        return(
+            Order.objects.filter(user=self.request.user)            
+            .select_related("user")
+            .prefetch_related(
+                "items__product__category",
+                "items__product__brand"
+            )
+            .order_by("-created_at")
+        )
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -332,15 +345,140 @@ class OrderItemViewSet(viewsets.ModelViewSet):
     filterset_fields = {"order": ["exact"]}
 
     def get_queryset(self):
-        return CartItem.objects.filter(
+        return OrderItem.objects.filter(
             order__user=self.request.user
             ).select_related("order__user", "product__category", "product__brand").order_by("id")
 
     def get_serializer_class(self):
-        if self.action == "list":
+        if self.action in ["list", "retrieve"]:
             return OrderPublicItemSerializer
         else:
             return OrderItemSerializer
 
 class WelcomeView(TemplateView):
     template_name = "welcome.html"
+
+
+class CreatePreferenceView(APIView):
+    permission_classes = [IsAuthenticated]
+    def post(self, request):
+        # Obtener el carrito del usuario logueado
+        try:
+            cart = Cart.objects.prefetch_related("cartitems__product").get(user=request.user)
+        except Cart.DoesNotExist:
+            return Response(
+                {"error": "No se encontró un carrito activo para este usuario."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        # Validar que el carrito no este vacio
+        if not cart.cartitems.exists():
+            return Response(
+                {"error": "No se puede realizar la compra: el carrito está vacío."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Crear preferencia en Mercado Pago
+        try:
+            mp_service = MercadoPagoService()
+            preference = mp_service.create_preference(cart, request.user)
+        except Exception as e:
+            return Response(
+                {"error": f"Fallo al conectar con la pasarela de pagos: {str(e)}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        # Devolver links de pago y id de preferencia
+        return Response({
+            "preference_id": preference.get("id"),
+            "init_point": preference.get("init_point"),
+            "sandbox_init_point": preference.get("sandbox_init_point"),
+        }, status=status.HTTP_201_CREATED)
+
+
+
+class MercadoPagoWebhookView(APIView):
+    permission_classes = [AllowAny]
+    def post(self, request):
+        # Obtener respuesta de cualquier tipo
+        topic = request.query_params.get("topic") or request.data.get("type")
+        payment_id = request.query_params.get("id") or request.data.get("data", {}).get("id")
+        if not payment_id or topic != "payment":
+            # Ignorar notificaciones que no sean de tipo 'payment'
+            return Response({"status": "ignored"}, status=status.HTTP_200_OK)
+        # Consultar informacion del pago en la API de Mercado Pago
+        try:
+            mp_service = MercadoPagoService()
+            payment_info = mp_service.get_payment_info(str(payment_id))
+        except Exception as e:
+            return Response(
+                {"error": f"Error al verificar pago con Mercado Pago: {str(e)}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        # Si el pago no fue encontrado en Mercado Pago
+        if not payment_info:
+            return Response(
+                {"error": f"El pago con ID {payment_id} no existe en Mercado Pago."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Obtener status del pago
+        payment_status = payment_info.get("status")
+        status_detail = payment_info.get("status_detail")
+
+        # Verificar si este payment_id ya fue procesado
+        if Order.objects.filter(payment_id=str(payment_id)).exists():
+            return Response(
+                {"message": "El pago ya fue procesado con anterioridad."},
+                status=status.HTTP_200_OK,
+            )
+        # Si el pago no fue aprobado
+        if payment_status != "approved":
+            return Response({
+                "message": "Pago no aprobado. No se generó ninguna orden de compra.",
+                "payment_id": payment_id,
+                "status": payment_status,
+                "status_detail": status_detail,  
+            }, status=status.HTTP_200_OK)
+        # Obtener usuario y carrito
+        metadata = payment_info.get("metadata", {})
+        user_id = metadata.get("user_id")
+        cart_id = metadata.get("cart_id")
+        # Buscar usuario y carrito asociados
+        try:
+            user = CustomUser.objects.get(pk=user_id)
+            cart = Cart.objects.prefetch_related("cartitems__product").get(pk=cart_id, user=user)
+        except (CustomUser.DoesNotExist, Cart.DoesNotExist):
+            return Response(
+                {"error": "Usuario o Carrito asociado al pago no encontrado."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        # Crear Order, congelar OrderItems y vaciar el Carrito
+        with transaction.atomic():
+            # Crear Order
+            total_amount = payment_info.get("transaction_amount", 0.00)
+            order_code = f"ORD-{uuid.uuid4().hex[:8].upper()}"
+            order = Order.objects.create(
+                user=user,
+                order_code=order_code,
+                total_amount=total_amount,
+                status="Paid",
+                payment_id=str(payment_id),
+                shipping_address=payment_info.get("payer", {}).get("address", {}).get("street_name") or "No especificada"
+            )
+            # Guardar OrderItems en la orden de compra
+            order_items = [
+                OrderItem(
+                    order=order,
+                    product=item.product,
+                    quantity=item.quantity,
+                    price=item.product.price,
+                )
+                for item in cart.cartitems.all()
+            ]
+            OrderItem.objects.bulk_create(order_items)
+            # Vaciar el carrito de compra
+            cart.cartitems.all().delete()
+        # Devolver datos de la orden
+        serializer = OrderPublicSerializer(order)
+        return Response({
+            "message": "Pago aprobado con éxito. Orden de compra creada.",
+            "order": serializer.data
+        }, status=status.HTTP_201_CREATED)
