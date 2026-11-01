@@ -224,17 +224,21 @@ class WishlistSerializer(serializers.ModelSerializer):
 
 class OrderPublicItemSerializer(serializers.ModelSerializer):
     product = ProductPublicSerializer(read_only=True)
-
+    sub_total = serializers.SerializerMethodField()
     class Meta:
         model = OrderItem
         fields = [
-            'id', 
-            'order', 
-            'product', 
-            'quantity', 
-            'price'
+            "id",
+            "order",
+            "product",
+            "quantity",
+            "price",
+            "sub_total"
         ]
-        read_only_fields = ['id']
+        read_only_fields = ["id", "order", "price", "sub_total"]
+    # Calcular subtotal del producto
+    def get_sub_total(self, obj):
+        return obj.price * obj.quantity
 
 class OrderPublicSerializer(serializers.ModelSerializer):
     user = serializers.StringRelatedField(read_only=True)
@@ -254,7 +258,7 @@ class OrderPublicSerializer(serializers.ModelSerializer):
             'updated_at',
             'items'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'order_code', 'created_at', 'updated_at']
 
 class OrderSerializer(serializers.ModelSerializer):
     class Meta:
