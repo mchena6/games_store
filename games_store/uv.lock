@@ -268,6 +268,7 @@ dependencies = [
     { name = "djangorestframework" },
     { name = "djangorestframework-simplejwt" },
     { name = "drf-spectacular" },
+    { name = "mercadopago" },
     { name = "pillow" },
     { name = "psycopg", extra = ["binary"] },
     { name = "python-dotenv" },
@@ -283,6 +284,7 @@ requires-dist = [
     { name = "djangorestframework", specifier = ">=3.18.3" },
     { name = "djangorestframework-simplejwt", specifier = ">=5.5.1" },
     { name = "drf-spectacular", specifier = ">=0.30.0" },
+    { name = "mercadopago", specifier = ">=3.6.0" },
     { name = "pillow", specifier = ">=13.0.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.6" },
     { name = "python-dotenv", specifier = ">=1.2.4" },
@@ -332,6 +334,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/19/74/a633ee74eb36c44aa6d1095e7cc5569bebf04342ee146178e2d36600708b/jsonschema_specifications-2025.9.1.tar.gz", hash = "sha256:b540987f239e745613c7a9176f3edb72b832a4ac465cf02712288397832b5e8d", size = 32855, upload-time = "2025-09-08T01:34:59.186Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/41/45/1a4ed80516f02155c51f51e8cedb3c1902296743db0bbc66608a0db2814f/jsonschema_specifications-2025.9.1-py3-none-any.whl", hash = "sha256:98802fee3a11ee76ecaca44429fda8a41bff98b00a0f2838151b113f210cc6fe", size = 18437, upload-time = "2025-09-08T01:34:57.871Z" },
+]
+
+[[package]]
+name = "mercadopago"
+version = "3.6.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/76/1f/49c0d2439203ccdb032ad558f2ce98111cb550266e9e106ea74136b3ad4b/mercadopago-3.6.0.tar.gz", hash = "sha256:fcf6cb11f1d5505b9b237682b97e482a13cda0cbb4829de28a07028775f58632", size = 67484, upload-time = "2026-09-10T00:05:40.718Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/af/e6/ed2c481aa6cdf366d090976a95f753bfdac6ee0a5ff4622f1f8ee533d7a7/mercadopago-3.6.0-py3-none-any.whl", hash = "sha256:9a405991f8520ee36b2857bf7b2c8fbd701a5f429fc8f60fcf9fd2a9e664bb0f", size = 81318, upload-time = "2026-09-10T00:05:39.436Z" },
 ]
 
 [[package]]
