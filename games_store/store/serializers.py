@@ -221,6 +221,18 @@ class WishlistSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created']
 
+    def validate(self, attrs):
+        # Validar que un producto no se agregue dos veces a la wishlist
+        request = self.context.get("request")
+        user = request.user if request else None
+        product = attrs.get("product")
+        if user and product and self.instance is None:
+            if Wishlist.objects.filter(user=user, product=product).exists():
+                raise serializers.ValidationError(
+                    {"product": "Este producto ya se encuentra en tu lista de deseos."}
+                )
+        return attrs
+
 
 class OrderPublicItemSerializer(serializers.ModelSerializer):
     product = ProductPublicSerializer(read_only=True)

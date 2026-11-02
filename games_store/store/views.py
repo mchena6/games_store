@@ -293,13 +293,63 @@ class WishlistViewSet(viewsets.ModelViewSet):
         return Wishlist.objects.filter(user=self.request.user).select_related("product__category", "product__brand", "user").order_by("-created")
 
     def get_serializer_class(self):
-        if self.action == "list":
+        if self.action in ["list", "retrieve", "add_product"]:
             return WishlistPublicSerializer
         else:
             return WishlistSerializer
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+   # Agregar producto a la Wishlist
+    @action(detail=False, methods=["post"], url_path="add-product")
+    def add_product(self, request):
+        product_id = request.data.get("product_id")
+        if not product_id:
+            return Response(
+                {"error": "El campo 'product_id' es obligatorio."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        product = get_object_or_404(Product, pk=product_id)
+        # Comprobar si el producto ya existe en la wishlist del usuario logueado
+        if Wishlist.objects.filter(user=request.user, product=product).exists():
+            return Response(
+                {"error": "Este producto ya se encuentra en tu lista de deseos."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Agregar producto 
+        wishlist_item = Wishlist.objects.create(user=request.user, product=product)
+        serializer = WishlistPublicSerializer(wishlist_item, context=self.get_serializer_context())
+        return Response(
+            {
+                "message": "Producto agregado a la lista de deseos con éxito.",
+                "item": serializer.data,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+    # Eliminar un producto de la Wishlist
+    @action(detail=False, methods=["post", "delete"], url_path="remove-product")
+    def remove_product(self, request):
+        product_id = request.data.get("product_id")
+        if not product_id:
+            return Response(
+                {"error": "El campo 'product_id' es obligatorio."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        # Comprobar que el producto existe en la Wishlist del usuario logueado
+        wishlist_item = Wishlist.objects.filter(user=request.user, product_id=product_id).first()
+        if not wishlist_item:
+            return Response(
+                {"error": "El producto no se encuentra en tu lista de deseos."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        # Eliminar producto
+        wishlist_item.delete()
+        return Response(
+            {"message": "Producto eliminado de la lista de deseos con éxito."},
+            status=status.HTTP_200_OK,
+        )
+
 
 class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
