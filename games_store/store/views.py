@@ -249,6 +249,23 @@ class CartItemViewSet(viewsets.ModelViewSet):
         # Actualizar carrito y retornarlo 
         return self._get_updated_cart_response(cart_id=cart_id, message=msg)
 
+    # Eliminar producto del carrito    
+    @action(detail=True, methods=["delete"], url_path="delete-item")
+    def eliminar(self, request, pk=None):
+        # Filtrar por usuario
+        cart_item = self.get_object()  
+        cart_id = cart_item.cart_id
+
+        # Eliminar producto
+        cart_item.delete()
+
+        # Actualizar carrito y retornarlo 
+        return self._get_updated_cart_response(
+            cart_id=cart_id, 
+            message="El producto fue eliminado del carrito."
+        )
+
+
 class ReviewViewSet(viewsets.ModelViewSet):
     queryset = Review.objects.all().select_related("product__category","product__brand", "user").order_by("id")
     permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
