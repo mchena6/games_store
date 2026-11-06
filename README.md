@@ -97,6 +97,12 @@ La API cuenta con documentación autogenerada y testeable. Una vez que el servid
 
 ## Capturas de Pantalla
 
+<img width="1366" height="768" alt="Captura de pantalla de 2026-11-05 23-30-19" src="https://github.com/user-attachments/assets/d6fff491-206c-41aa-bdb3-e4f4929376e3" />
+<img width="1366" height="768" alt="Captura de pantalla de 2026-11-05 23-29-12" src="https://github.com/user-attachments/assets/4f4add58-3797-41ae-a82a-6dc89813d12e" />
+<img width="1366" height="768" alt="Captura de pantalla de 2026-11-05 23-28-53" src="https://github.com/user-attachments/assets/0750f093-aee9-4af0-88f6-25f0434ca13c" />
+<img width="1366" height="768" alt="Captura de pantalla de 2026-11-05 23-28-37" src="https://github.com/user-attachments/assets/2f23cd19-7896-4962-a262-21bf6df55b7f" />
+<img width="1366" height="768" alt="Captura de pantalla de 2026-11-05 23-28-11" src="https://github.com/user-attachments/assets/1fc58c22-8cd4-46a8-a758-e7a82423c381" />
+<img width="1366" height="768" alt="Captura de pantalla de 2026-11-05 23-27-57" src="https://github.com/user-attachments/assets/13430b81-94c3-47aa-a0c1-869a44ca5ced" />
 
 
 ## Equipo de Desarrollo
