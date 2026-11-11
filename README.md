@@ -22,7 +22,7 @@ Backend API RESTful desarrollada para el proyecto "Games Store" (Ingeniería de 
 *   **Autenticación:** SimpleJWT
 *   **Documentación:** drf-spectacular (Swagger UI / OpenAPI 3)
 *   **Gestor de Paquetes:** `uv`
-*   **Base de Datos:** SQLite (Desarrollo) / [Especificar PostgreSQL si lo usan en prod]
+*   **Base de Datos:** SQLite (Desarrollo) / [PostgreSQL en prod (NeonDB)]
 
 ## Requisitos Previos
 
