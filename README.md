@@ -104,6 +104,9 @@ La API cuenta con documentación autogenerada y testeable. Una vez que el servid
 <img width="1366" height="768" alt="Captura de pantalla de 2026-11-05 23-28-11" src="https://github.com/user-attachments/assets/1fc58c22-8cd4-46a8-a758-e7a82423c381" />
 <img width="1366" height="768" alt="Captura de pantalla de 2026-11-05 23-27-57" src="https://github.com/user-attachments/assets/13430b81-94c3-47aa-a0c1-869a44ca5ced" />
 
+## Diagrama de base de datos
+
+<img width="3468" height="2033" alt="image" src="https://github.com/user-attachments/assets/a70ddb47-b21b-4455-892d-29b53129770d" />
 
 ## Equipo de Desarrollo
 
